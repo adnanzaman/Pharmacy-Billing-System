@@ -10,6 +10,12 @@ const compression = require('compression');
 const pool = require('./config/db');
 const auth = require('./middleware/auth');
 const asyncHandler = require('./utils/asyncHandler');
+// requirePermission(code) / requireAnyPermission(...codes): server-side RBAC.
+// This was previously defined but never attached to any route, which is why
+// creating a custom Role and ticking permissions for it had no real effect —
+// every logged-in user could reach every endpoint regardless of their role.
+const requirePermission = require('./middleware/permission');
+const { requireAnyPermission } = requirePermission;
 
 const authCtrl = require('./controllers/auth.controller');
 const dash = require('./controllers/dashboard.controller');
@@ -88,31 +94,31 @@ const loginLimiter = rateLimit({
 
 app.get(
   '/api/suppliers',
-  auth,
+  auth, requirePermission('suppliers.view'),
   asyncHandler(suppliers.list)
 );
 
 app.post(
   '/api/suppliers',
-  auth,
+  auth, requirePermission('suppliers.create'),
   asyncHandler(suppliers.create)
 );
 
 app.get(
   '/api/suppliers/:id',
-  auth,
+  auth, requirePermission('suppliers.view'),
   asyncHandler(suppliers.getOne)
 );
 
 app.put(
   '/api/suppliers/:id',
-  auth,
+  auth, requirePermission('suppliers.update'),
   asyncHandler(suppliers.update)
 );
 
 app.delete(
   '/api/suppliers/:id',
-  auth,
+  auth, requirePermission('suppliers.delete'),
   asyncHandler(suppliers.remove)
 );
 
@@ -154,13 +160,13 @@ app.get(
 
 app.get(
   '/api/dashboard/summary',
-  auth,
+  auth, requirePermission('dashboard.view'),
   asyncHandler(dash.summary)
 );
 
 app.get(
   '/api/dashboard/trend',
-  auth,
+  auth, requirePermission('dashboard.view'),
   asyncHandler(dash.trend)
 );
 
@@ -170,37 +176,37 @@ app.get(
 
 app.get(
   '/api/patients',
-  auth,
+  auth, requirePermission('patients.view'),
   asyncHandler(patients.list)
 );
 
 app.post(
   '/api/patients',
-  auth,
+  auth, requirePermission('patients.create'),
   asyncHandler(patients.create)
 );
 
 app.get(
   '/api/patients/:id',
-  auth,
+  auth, requirePermission('patients.view'),
   asyncHandler(patients.getOne)
 );
 
 app.put(
   '/api/patients/:id',
-  auth,
+  auth, requirePermission('patients.update'),
   asyncHandler(patients.update)
 );
 
 app.delete(
   '/api/patients/:id',
-  auth,
+  auth, requirePermission('patients.delete'),
   asyncHandler(patients.remove)
 );
 
 app.get(
   '/api/patients/:id/visits',
-  auth,
+  auth, requirePermission('patients.view'),
   asyncHandler(patients.visits)
 );
 
@@ -208,11 +214,11 @@ app.get(
    Doctors
 ----------------------------- */
 
-app.get('/api/doctors', auth, asyncHandler(doctors.list));
-app.post('/api/doctors', auth, asyncHandler(doctors.create));
-app.get('/api/doctors/:id', auth, asyncHandler(doctors.getOne));
-app.put('/api/doctors/:id', auth, asyncHandler(doctors.update));
-app.delete('/api/doctors/:id', auth, asyncHandler(doctors.remove));
+app.get('/api/doctors', auth, requirePermission('doctors.view'), asyncHandler(doctors.list));
+app.post('/api/doctors', auth, requirePermission('doctors.create'), asyncHandler(doctors.create));
+app.get('/api/doctors/:id', auth, requirePermission('doctors.view'), asyncHandler(doctors.getOne));
+app.put('/api/doctors/:id', auth, requirePermission('doctors.update'), asyncHandler(doctors.update));
+app.delete('/api/doctors/:id', auth, requirePermission('doctors.delete'), asyncHandler(doctors.remove));
 
 /* -----------------------------
    Medicines
@@ -223,37 +229,37 @@ app.delete('/api/doctors/:id', auth, asyncHandler(doctors.remove));
 
 app.get(
   '/api/medicines',
-  auth,
+  auth, requirePermission('items.view'),
   asyncHandler(medicines.list)
 );
 
 app.get(
   '/api/medicines/next-code',
-  auth,
+  auth, requirePermission('items.view'),
   asyncHandler(medicines.nextCode)
 );
 
 app.post(
   '/api/medicines',
-  auth,
+  auth, requirePermission('items.create'),
   asyncHandler(medicines.create)
 );
 
 app.get(
   '/api/medicines/:id',
-  auth,
+  auth, requirePermission('items.view'),
   asyncHandler(medicines.getOne)
 );
 
 app.put(
   '/api/medicines/:id',
-  auth,
+  auth, requirePermission('items.update'),
   asyncHandler(medicines.update)
 );
 
 app.delete(
   '/api/medicines/:id',
-  auth,
+  auth, requirePermission('items.delete'),
   asyncHandler(medicines.remove)
 );
 
@@ -263,31 +269,31 @@ app.delete(
 
 app.get(
   '/api/medicine-batches',
-  auth,
+  auth, requirePermission('items.view'),
   asyncHandler(batches.list)
 );
 
 app.post(
   '/api/medicine-batches',
-  auth,
+  auth, requirePermission('items.update'),
   asyncHandler(batches.create)
 );
 
 app.get(
   '/api/medicine-batches/:id',
-  auth,
+  auth, requirePermission('items.view'),
   asyncHandler(batches.getOne)
 );
 
 app.put(
   '/api/medicine-batches/:id',
-  auth,
+  auth, requirePermission('items.update'),
   asyncHandler(batches.update)
 );
 
 app.delete(
   '/api/medicine-batches/:id',
-  auth,
+  auth, requirePermission('items.delete'),
   asyncHandler(batches.remove)
 );
 
@@ -338,25 +344,25 @@ app.get(
 
 app.get(
   '/api/categories',
-  auth,
+  auth, requirePermission('categories.view'),
   asyncHandler(categories.list)
 );
 
 app.post(
   '/api/categories',
-  auth,
+  auth, requirePermission('categories.create'),
   asyncHandler(categories.create)
 );
 
 app.put(
   '/api/categories/:id',
-  auth,
+  auth, requirePermission('categories.update'),
   asyncHandler(categories.update)
 );
 
 app.delete(
   '/api/categories/:id',
-  auth,
+  auth, requirePermission('categories.delete'),
   asyncHandler(categories.remove)
 );
 
@@ -366,25 +372,25 @@ app.delete(
 
 app.get(
   '/api/units',
-  auth,
+  auth, requirePermission('units.view'),
   asyncHandler(units.list)
 );
 
 app.post(
   '/api/units',
-  auth,
+  auth, requirePermission('units.create'),
   asyncHandler(units.create)
 );
 
 app.put(
   '/api/units/:id',
-  auth,
+  auth, requirePermission('units.update'),
   asyncHandler(units.update)
 );
 
 app.delete(
   '/api/units/:id',
-  auth,
+  auth, requirePermission('units.delete'),
   asyncHandler(units.remove)
 );
 
@@ -394,16 +400,16 @@ app.delete(
 
 app.get(
   '/api/purchases',
-  auth,
+  auth, requirePermission('purchase.view'),
   asyncHandler(purchase.list)
 );
 
-app.post('/api/purchases', auth, asyncHandler(purchase.create));
+app.post('/api/purchases', auth, requirePermission('purchase.create'), asyncHandler(purchase.create));
 // Compatibility endpoint: some deployed/proxy environments reject PUT and return the generic 404 'Not found'.
 // Purchase edit uses POST /api/purchases/:id so editing works even when PUT is not allowed upstream.
-app.post('/api/purchases/:id', auth, asyncHandler(purchase.update));
-app.put('/api/purchases/:id', auth, asyncHandler(purchase.update));
-app.get('/api/purchases/:id', auth, asyncHandler(purchase.getOne));
+app.post('/api/purchases/:id', auth, requirePermission('purchase.update'), asyncHandler(purchase.update));
+app.put('/api/purchases/:id', auth, requirePermission('purchase.update'), asyncHandler(purchase.update));
+app.get('/api/purchases/:id', auth, requirePermission('purchase.view'), asyncHandler(purchase.getOne));
 
 /* -----------------------------
    Sales
@@ -411,16 +417,16 @@ app.get('/api/purchases/:id', auth, asyncHandler(purchase.getOne));
 
 app.get(
   '/api/sales',
-  auth,
+  auth, requirePermission('sale.view'),
   asyncHandler(sales.list)
 );
 
-app.post('/api/sales', auth, asyncHandler(sales.create));
+app.post('/api/sales', auth, requirePermission('sale.create'), asyncHandler(sales.create));
 // Compatibility endpoint for Sale Edit; POST avoids proxies that reject PUT.
-app.post('/api/sales/:id', auth, asyncHandler(sales.update));
-app.put('/api/sales/:id', auth, asyncHandler(sales.update));
-app.get('/api/sales/batches', auth, asyncHandler(sales.batches));
-app.get('/api/sales/:id', auth, asyncHandler(sales.getOne));
+app.post('/api/sales/:id', auth, requirePermission('sale.update'), asyncHandler(sales.update));
+app.put('/api/sales/:id', auth, requirePermission('sale.update'), asyncHandler(sales.update));
+app.get('/api/sales/batches', auth, requirePermission('sale.view'), asyncHandler(sales.batches));
+app.get('/api/sales/:id', auth, requirePermission('sale.view'), asyncHandler(sales.getOne));
 
 /* -----------------------------
    Inventory
@@ -428,13 +434,13 @@ app.get('/api/sales/:id', auth, asyncHandler(sales.getOne));
 
 app.get(
   '/api/inventory/stock',
-  auth,
+  auth, requirePermission('stock.view'),
   asyncHandler(inventory.stock)
 );
 
 app.post(
   '/api/inventory/adjust',
-  auth,
+  auth, requirePermission('stock.adjust'),
   asyncHandler(inventory.adjust)
 );
 
@@ -444,24 +450,24 @@ app.post(
 
 app.get(
   '/api/reports/profit-loss',
-  auth,
+  auth, requirePermission('reports.profit_loss'),
   asyncHandler(reports.profitLoss)
 );
 
-app.get('/api/reports/expiry', auth, asyncHandler(reports.expiry));
-app.get('/api/reports/sale', auth, asyncHandler(reports.sale));
-app.get('/api/reports/bill-wise-profit', auth, asyncHandler(reports.billWiseProfit));
-app.get('/api/reports/cash-flow', auth, asyncHandler(reports.cashFlow));
-app.get('/api/reports/purchase', auth, asyncHandler(reports.purchase));
-app.get('/api/reports/daybook', auth, asyncHandler(reports.daybook));
-app.get('/api/reports/all', auth, asyncHandler(reports.allTransactions));
-app.get('/api/reports/inventory', auth, asyncHandler(reports.inventory));
-app.get('/api/reports/audit', auth, asyncHandler(reports.audit));
-app.get('/api/reports/party-statement', auth, asyncHandler(reports.partyStatement));
-app.get('/api/reports/party-wise-profit-loss', auth, asyncHandler(reports.partyWiseProfitLoss));
-app.get('/api/reports/all-parties', auth, asyncHandler(reports.allParties));
-app.get('/api/reports/party-report-by-item', auth, asyncHandler(reports.partyReportByItem));
-app.get('/api/reports/sale-purchase-by-party', auth, asyncHandler(reports.salePurchaseByParty));
+app.get('/api/reports/expiry', auth, requirePermission('reports.view'), asyncHandler(reports.expiry));
+app.get('/api/reports/sale', auth, requirePermission('reports.sale'), asyncHandler(reports.sale));
+app.get('/api/reports/bill-wise-profit', auth, requirePermission('reports.view'), asyncHandler(reports.billWiseProfit));
+app.get('/api/reports/cash-flow', auth, requirePermission('reports.cash_flow'), asyncHandler(reports.cashFlow));
+app.get('/api/reports/purchase', auth, requirePermission('reports.purchase'), asyncHandler(reports.purchase));
+app.get('/api/reports/daybook', auth, requirePermission('reports.daybook'), asyncHandler(reports.daybook));
+app.get('/api/reports/all', auth, requirePermission('reports.view'), asyncHandler(reports.allTransactions));
+app.get('/api/reports/inventory', auth, requirePermission('reports.inventory'), asyncHandler(reports.inventory));
+app.get('/api/reports/audit', auth, requirePermission('reports.audit'), asyncHandler(reports.audit));
+app.get('/api/reports/party-statement', auth, requirePermission('reports.party_statement'), asyncHandler(reports.partyStatement));
+app.get('/api/reports/party-wise-profit-loss', auth, requirePermission('reports.party_profit_loss'), asyncHandler(reports.partyWiseProfitLoss));
+app.get('/api/reports/all-parties', auth, requirePermission('reports.all_parties'), asyncHandler(reports.allParties));
+app.get('/api/reports/party-report-by-item', auth, requirePermission('reports.party_report_by_item'), asyncHandler(reports.partyReportByItem));
+app.get('/api/reports/sale-purchase-by-party', auth, requirePermission('reports.sale_purchase_by_party'), asyncHandler(reports.salePurchaseByParty));
 
 /* -----------------------------
    Accounting
@@ -469,19 +475,19 @@ app.get('/api/reports/sale-purchase-by-party', auth, asyncHandler(reports.salePu
 
 app.get(
   '/api/accounting/trial-balance',
-  auth,
+  auth, requirePermission('accounting.trial_balance'),
   asyncHandler(accounting.trialBalance)
 );
 
 app.get(
   '/api/accounting/gl',
-  auth,
+  auth, requirePermission('accounting.gl'),
   asyncHandler(accounting.gl)
 );
 
 app.get(
   '/api/accounting/balance-sheet',
-  auth,
+  auth, requirePermission('accounting.balance_sheet'),
   asyncHandler(accounting.balanceSheet)
 );
 
@@ -489,43 +495,48 @@ app.get(
    Cash & Bank
 ----------------------------- */
 
-app.get('/api/cash-bank/accounts', auth, asyncHandler(cashBank.list));
-app.post('/api/cash-bank/accounts', auth, asyncHandler(cashBank.create));
-app.put('/api/cash-bank/accounts/:id', auth, asyncHandler(cashBank.update));
-app.delete('/api/cash-bank/accounts/:id', auth, asyncHandler(cashBank.remove));
-app.get('/api/cash-bank/ledger', auth, asyncHandler(cashBank.ledger));
-app.post('/api/cash-bank/transfer', auth, asyncHandler(cashBank.transfer));
-app.post('/api/cash-bank/opening-cash', auth, asyncHandler(cashBank.openingCash));
+app.get('/api/cash-bank/accounts', auth, requirePermission('cash_bank.view'), asyncHandler(cashBank.list));
+app.post('/api/cash-bank/accounts', auth, requirePermission('cash_bank.create'), asyncHandler(cashBank.create));
+app.put('/api/cash-bank/accounts/:id', auth, requirePermission('cash_bank.update'), asyncHandler(cashBank.update));
+app.delete('/api/cash-bank/accounts/:id', auth, requirePermission('cash_bank.delete'), asyncHandler(cashBank.remove));
+app.get('/api/cash-bank/ledger', auth, requirePermission('cash_bank.view'), asyncHandler(cashBank.ledger));
+app.post('/api/cash-bank/transfer', auth, requirePermission('cash_bank.transfer'), asyncHandler(cashBank.transfer));
+app.post('/api/cash-bank/opening-cash', auth, requirePermission('cash_bank.update'), asyncHandler(cashBank.openingCash));
 
 /* -----------------------------
    Payments (collect from patients / pay suppliers)
 ----------------------------- */
 
-app.get('/api/payments/pending', auth, asyncHandler(payments.pending));
-app.get('/api/payments/party-invoices', auth, asyncHandler(payments.partyInvoices));
-app.post('/api/payments', auth, asyncHandler(payments.create));
-app.get('/api/payments', auth, asyncHandler(payments.list));
+app.get('/api/payments/pending', auth, requireAnyPermission('payment_in.view', 'payment_out.view'), asyncHandler(payments.pending));
+app.get('/api/payments/party-invoices', auth, requireAnyPermission('payment_in.view', 'payment_out.view'), asyncHandler(payments.partyInvoices));
+app.post('/api/payments', auth, requireAnyPermission('payment_in.create', 'payment_out.create'), asyncHandler(payments.create));
+app.get('/api/payments', auth, requireAnyPermission('payment_in.view', 'payment_out.view'), asyncHandler(payments.list));
 
 /* -----------------------------
    Purchase Returns (Debit Notes)
 ----------------------------- */
 
-app.get('/api/purchase-returns', auth, asyncHandler(purchaseReturns.list));
-app.post('/api/purchase-returns', auth, asyncHandler(purchaseReturns.create));
-app.get('/api/purchase-returns/:id', auth, asyncHandler(purchaseReturns.getOne));
-app.put('/api/purchase-returns/:id', auth, asyncHandler(purchaseReturns.update));
+app.get('/api/purchase-returns', auth, requirePermission('purchase.return'), asyncHandler(purchaseReturns.list));
+app.post('/api/purchase-returns', auth, requirePermission('purchase.return'), asyncHandler(purchaseReturns.create));
+app.get('/api/purchase-returns/:id', auth, requirePermission('purchase.return'), asyncHandler(purchaseReturns.getOne));
+app.put('/api/purchase-returns/:id', auth, requirePermission('purchase.return'), asyncHandler(purchaseReturns.update));
 
 /* -----------------------------
    Sale Returns (Credit Notes)
 ----------------------------- */
 
-app.get('/api/sale-returns', auth, asyncHandler(saleReturns.list));
-app.post('/api/sale-returns', auth, asyncHandler(saleReturns.create));
-app.get('/api/sale-returns/:id', auth, asyncHandler(saleReturns.getOne));
-app.put('/api/sale-returns/:id', auth, asyncHandler(saleReturns.update));
+app.get('/api/sale-returns', auth, requirePermission('sale.return'), asyncHandler(saleReturns.list));
+app.post('/api/sale-returns', auth, requirePermission('sale.return'), asyncHandler(saleReturns.create));
+app.get('/api/sale-returns/:id', auth, requirePermission('sale.return'), asyncHandler(saleReturns.getOne));
+app.put('/api/sale-returns/:id', auth, requirePermission('sale.return'), asyncHandler(saleReturns.update));
 
 /* -----------------------------
    Users, Roles & Permissions (Administrator)
+   These stay restricted to the Admin / System Administrator role itself
+   (see requireAdmin() inside users_roles.controller.js) rather than being
+   opened up by the generic permission codes below, since managing other
+   users' accounts and roles is intentionally admin-only regardless of what
+   a custom role is granted.
 ----------------------------- */
 app.get('/api/admin/users', auth, asyncHandler(usersRoles.listUsers));
 app.post('/api/admin/users', auth, asyncHandler(usersRoles.createUser));
@@ -542,17 +553,17 @@ app.put('/api/admin/roles/:id', auth, asyncHandler(usersRoles.updateRole));
 
 app.get(
   '/api/expenses',
-  auth,
+  auth, requirePermission('expenses.view'),
   asyncHandler(expenses.list)
 );
 
 app.post(
   '/api/expenses',
-  auth,
+  auth, requirePermission('expenses.create'),
   asyncHandler(expenses.create)
 );
-app.get('/api/expenses/:id', auth, asyncHandler(expenses.getOne));
-app.put('/api/expenses/:id', auth, asyncHandler(expenses.update));
+app.get('/api/expenses/:id', auth, requirePermission('expenses.view'), asyncHandler(expenses.getOne));
+app.put('/api/expenses/:id', auth, requirePermission('expenses.update'), asyncHandler(expenses.update));
 
 /* -----------------------------
    Settings
@@ -560,13 +571,13 @@ app.put('/api/expenses/:id', auth, asyncHandler(expenses.update));
 
 app.get(
   '/api/settings',
-  auth,
+  auth, requirePermission('settings.view'),
   asyncHandler(settings.list)
 );
 
 app.post(
   '/api/settings',
-  auth,
+  auth, requirePermission('settings.update'),
   asyncHandler(settings.save)
 );
 

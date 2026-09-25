@@ -38,7 +38,7 @@ exports.listUsers = async (req, res) => {
   if (!(await requireAdmin(req, res))) return;
   const hospitalId = await resolveHospitalId(req);
   const [rows] = await pool.query(`
-    SELECT u.id,u.name,u.email,u.is_active,u.hospital_id,u.branch_id,u.created_at,
+    SELECT u.id,u.name,u.username,u.email,u.is_active,u.hospital_id,u.branch_id,u.created_at,
            GROUP_CONCAT(DISTINCT r.name ORDER BY r.name SEPARATOR ', ') AS roles
     FROM users u
     LEFT JOIN user_roles ur ON ur.user_id=u.id
@@ -49,37 +49,47 @@ exports.listUsers = async (req, res) => {
   res.json(rows);
 };
 
+const USERNAME_PATTERN = /^[a-zA-Z0-9._-]{3,50}$/;
+
 exports.createUser = async (req, res) => {
   if (!(await requireAdmin(req, res))) return;
-  const { name, email, password, role_id, is_active = 1, branch_id = null } = req.body || {};
-  if (!name || !email || !password || !role_id) return res.status(400).json({ message: 'Name, email, password and role are required' });
+  const { name, username, email, password, role_id, is_active = 1, branch_id = null } = req.body || {};
+  const cleanUsername = String(username || '').trim();
+  if (!name || !cleanUsername || !password || !role_id) return res.status(400).json({ message: 'Name, user name, password and role are required' });
+  if (!USERNAME_PATTERN.test(cleanUsername)) return res.status(400).json({ message: 'User name must be 3-50 characters: letters, numbers, dot, dash or underscore only' });
   if (String(password).length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     const [roleRows] = await conn.query('SELECT id FROM roles WHERE id=? LIMIT 1', [role_id]);
     if (!roleRows.length) throw Object.assign(new Error('Selected role not found'), { status: 400 });
-    const [existing] = await conn.query('SELECT id FROM users WHERE email=? LIMIT 1', [email.trim()]);
-    if (existing.length) throw Object.assign(new Error('Email already exists'), { status: 409 });
+    const [existing] = await conn.query('SELECT id FROM users WHERE username=? LIMIT 1', [cleanUsername]);
+    if (existing.length) throw Object.assign(new Error('User name is already in use'), { status: 409 });
+    if (email) {
+      const [dupeEmail] = await conn.query('SELECT id FROM users WHERE email=? LIMIT 1', [String(email).trim()]);
+      if (dupeEmail.length) throw Object.assign(new Error('Email is already in use'), { status: 409 });
+    }
     const hash = await bcrypt.hash(password, 10);
     const [result] = await conn.query(
-      'INSERT INTO users (hospital_id,branch_id,name,email,password_hash,is_active) VALUES (?,?,?,?,?,?)',
-      [await resolveHospitalId(req), branch_id || null, name.trim(), email.trim(), hash, is_active ? 1 : 0]
+      'INSERT INTO users (hospital_id,branch_id,name,username,email,password_hash,is_active) VALUES (?,?,?,?,?,?,?)',
+      [await resolveHospitalId(req), branch_id || null, name.trim(), cleanUsername, email ? String(email).trim() : null, hash, is_active ? 1 : 0]
     );
     await conn.query('INSERT INTO user_roles (user_id,role_id) VALUES (?,?)', [result.insertId, role_id]);
     await conn.commit();
     res.status(201).json({ id: result.insertId, message: 'User created successfully' });
   } catch (e) {
     await conn.rollback();
-    res.status(e.status || 500).json({ message: e.message || 'Could not create user' });
+    res.status(e.status || (e.code === 'ER_DUP_ENTRY' ? 409 : 500)).json({ message: e.code === 'ER_DUP_ENTRY' ? 'User name is already in use' : (e.message || 'Could not create user') });
   } finally { conn.release(); }
 };
 
 exports.updateUser = async (req, res) => {
   if (!(await requireAdmin(req, res))) return;
   const id = Number(req.params.id);
-  const { name, email, password, role_id, is_active, branch_id = null } = req.body || {};
-  if (!name || !email || !role_id) return res.status(400).json({ message: 'Name, email and role are required' });
+  const { name, username, email, password, role_id, is_active, branch_id = null } = req.body || {};
+  const cleanUsername = String(username || '').trim();
+  if (!name || !cleanUsername || !role_id) return res.status(400).json({ message: 'Name, user name and role are required' });
+  if (!USERNAME_PATTERN.test(cleanUsername)) return res.status(400).json({ message: 'User name must be 3-50 characters: letters, numbers, dot, dash or underscore only' });
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -87,14 +97,18 @@ exports.updateUser = async (req, res) => {
     if (!users.length) throw Object.assign(new Error('User not found'), { status: 404 });
     const [roles] = await conn.query('SELECT id FROM roles WHERE id=? LIMIT 1', [role_id]);
     if (!roles.length) throw Object.assign(new Error('Selected role not found'), { status: 400 });
-    const [dupe] = await conn.query('SELECT id FROM users WHERE email=? AND id<>? LIMIT 1', [email.trim(), id]);
-    if (dupe.length) throw Object.assign(new Error('Email already exists'), { status: 409 });
+    const [dupe] = await conn.query('SELECT id FROM users WHERE username=? AND id<>? LIMIT 1', [cleanUsername, id]);
+    if (dupe.length) throw Object.assign(new Error('User name is already in use'), { status: 409 });
+    if (email) {
+      const [dupeEmail] = await conn.query('SELECT id FROM users WHERE email=? AND id<>? LIMIT 1', [String(email).trim(), id]);
+      if (dupeEmail.length) throw Object.assign(new Error('Email is already in use'), { status: 409 });
+    }
     if (password && String(password).length < 6) throw Object.assign(new Error('Password must be at least 6 characters'), { status: 400 });
     if (password) {
       const hash = await bcrypt.hash(password, 10);
-      await conn.query('UPDATE users SET name=?,email=?,password_hash=?,is_active=?,branch_id=? WHERE id=?', [name.trim(), email.trim(), hash, is_active ? 1 : 0, branch_id || null, id]);
+      await conn.query('UPDATE users SET name=?,username=?,email=?,password_hash=?,is_active=?,branch_id=? WHERE id=?', [name.trim(), cleanUsername, email ? String(email).trim() : null, hash, is_active ? 1 : 0, branch_id || null, id]);
     } else {
-      await conn.query('UPDATE users SET name=?,email=?,is_active=?,branch_id=? WHERE id=?', [name.trim(), email.trim(), is_active ? 1 : 0, branch_id || null, id]);
+      await conn.query('UPDATE users SET name=?,username=?,email=?,is_active=?,branch_id=? WHERE id=?', [name.trim(), cleanUsername, email ? String(email).trim() : null, is_active ? 1 : 0, branch_id || null, id]);
     }
     await conn.query('DELETE FROM user_roles WHERE user_id=?', [id]);
     await conn.query('INSERT INTO user_roles (user_id,role_id) VALUES (?,?)', [id, role_id]);
@@ -102,7 +116,7 @@ exports.updateUser = async (req, res) => {
     res.json({ message: 'User updated successfully' });
   } catch (e) {
     await conn.rollback();
-    res.status(e.status || 500).json({ message: e.message || 'Could not update user' });
+    res.status(e.status || (e.code === 'ER_DUP_ENTRY' ? 409 : 500)).json({ message: e.code === 'ER_DUP_ENTRY' ? 'User name is already in use' : (e.message || 'Could not update user') });
   } finally { conn.release(); }
 };
 

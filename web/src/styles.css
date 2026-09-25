@@ -724,11 +724,11 @@ border: 1px solid var(--border-color);box-shadow: 0 4px 12px rgba(26, 29, 32, 0.
     "p1 p2 no no"
     "x1 x1 dt tm"
     "l1 l2 ad ad";
-  column-gap: 16px;
-  row-gap: 10px;
+  column-gap: 10px;
+  row-gap: 4px;
   align-items: start;
-  margin-bottom: 12px;
-  padding-bottom: 14px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--border-color, #e8e8e8);
 }
 .inv-head.has-bk {
@@ -756,6 +756,59 @@ border: 1px solid var(--border-color);box-shadow: 0 4px 12px rgba(26, 29, 32, 0.
   align-self: end;
 }
 .inv-head .ih-hint { font-size: 11px; color: var(--text-muted); }
+
+/* Compact header: end users work in the item grid, so header fields
+   (Invoice No, Date, Time, Payment Type, etc.) are shrunk down to a
+   single small-row height instead of the default AntD medium size. */
+.inv-head .field-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .2px;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 2px;
+  line-height: 1.2;
+}
+.inv-head .ant-input,
+.inv-head .ant-input-affix-wrapper,
+.inv-head .ant-input-number,
+.inv-head .ant-input-number-input,
+.inv-head .ant-select-selector,
+.inv-head .ant-picker {
+  font-size: 12px !important;
+  min-height: 26px !important;
+  height: 26px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 26px !important;
+}
+.inv-head .ant-select-selection-item,
+.inv-head .ant-select-selection-placeholder {
+  line-height: 24px !important;
+}
+.inv-head .ant-select-selector { padding: 0 8px !important; }
+.inv-head textarea.ant-input {
+  height: auto !important;
+  min-height: 26px !important;
+  line-height: 1.3 !important;
+  padding: 3px 8px !important;
+  font-size: 12px !important;
+}
+.inv-head .ant-input-number-handler-wrap { display: none; }
+.inv-head .ih-patient-tools .ant-btn { height: 22px; padding: 0 8px; font-size: 11px; }
+.inv-head .ih-item-stock {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0d8db8;
+  background: #eaf7fb;
+  border: 1px solid #cdeef6;
+  border-radius: 6px;
+  padding: 4px 10px;
+  margin-top: 2px;
+}
+.inv-head .ih-item-stock b { color: #1f2937; }
+.inv-head .ih-item-stock .low { color: #d4380d; }
 @media (max-width: 900px) {
   .inv-head,
   .inv-head.has-bk {

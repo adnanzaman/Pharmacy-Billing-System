@@ -98,7 +98,7 @@ function Login({ onLogin }) {
 
       message.error(
         error.response?.data?.message ||
-        'Login failed. Please check your email and password.'
+        'Login failed. Please check your username and password.'
       );
 
     } finally {
@@ -222,30 +222,31 @@ function Login({ onLogin }) {
             <Form
               layout="vertical"
               initialValues={{
-                email: 'admin@gmail.com',
+                username: 'admin',
                 password: 'Admin@123'
               }}
               onFinish={submitLogin}
             >
 
               <Form.Item
-                name="email"
-                label="Email address"
+                name="username"
+                label="User Name"
                 rules={[
                   {
                     required: true,
                     message:
-                      'Please enter your email'
+                      'Please enter your user name'
                   }
                 ]}
               >
 
                 <Input
                   size="large"
-                  placeholder="admin@gmail.com"
+                  placeholder="Enter your user name"
+                  autoCapitalize="none"
                   prefix={
                     <span className="input-icon">
-                      @
+                      <UserOutlined />
                     </span>
                   }
                 />
@@ -2154,6 +2155,9 @@ function InvoiceForm({ type, onSaved, existingId = null }) {
   const [patientModal, setPatientModal] = useState(false);
   const [patientEditing, setPatientEditing] = useState(null);
   const [patientForm] = Form.useForm();
+  // Header "stock left" banner: set whenever an item / batch is picked on the
+  // Sale screen, so the cashier can see remaining stock without leaving the row.
+  const [stockPreview, setStockPreview] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -2306,15 +2310,26 @@ function InvoiceForm({ type, onSaved, existingId = null }) {
     return { price, tax_profile_id: tp ? tp.id : null, tax_percent: rate };
   };
 
+  // Total stock on hand for an item, summed across all its batches, plus the
+  // stock on the single batch that was actually picked for this line.
+  const stockFor = (medicineId, batch) => {
+    const opts = batches.filter(b => String(b.medicine_id) === String(medicineId));
+    const totalStock = opts.reduce((s, b) => s + Number(b.stock || 0), 0);
+    return { totalStock, batchStock: Number(batch?.stock || 0) };
+  };
+
   const onItemSelect = (id, medicineId) => {
     if (isSale) {
       const opts = batches.filter(b => String(b.medicine_id) === String(medicineId));
       const b = opts.find(x => Number(x.stock) > 0) || opts[0];
       const line = resolveSaleLine(medicineId, b);
+      const itemName = b?.medicine_name || medicines.find(m => String(m.id) === String(medicineId))?.name || '';
+      const { totalStock, batchStock } = stockFor(medicineId, b);
+      setStockPreview({ name: itemName, batchNo: b?.batch_no || '', batchStock, totalStock });
       onQtyOrPrice(id, {
         medicine_id: medicineId,
         category_id: medicines.find(m => String(m.id) === String(medicineId))?.category_id || null,
-        medicine_name: b?.medicine_name || medicines.find(m => String(m.id) === String(medicineId))?.name || '',
+        medicine_name: itemName,
         batch_id: b?.id || null,
         batch_no: b?.batch_no || '',
         exp_date: b?.expiry_date ? String(b.expiry_date).slice(0, 10) : '',
@@ -2338,6 +2353,8 @@ function InvoiceForm({ type, onSaved, existingId = null }) {
     const b = batches.find(x => String(x.id) === String(batchId));
     if (!b) return;
     const line = resolveSaleLine(b.medicine_id, b);
+    const { totalStock, batchStock } = stockFor(b.medicine_id, b);
+    setStockPreview({ name: b.medicine_name || '', batchNo: b.batch_no || '', batchStock, totalStock });
     onQtyOrPrice(id, {
       batch_id: b.id,
       batch_no: b.batch_no,
@@ -2535,6 +2552,13 @@ function InvoiceForm({ type, onSaved, existingId = null }) {
               <div className="ih-bk">
                 <div className="field-label">Bank Account</div>
                 <Select placeholder="Select bank account" style={{width:'100%'}} value={header.bank_account_id} options={bankAccounts.map(b=>({label:`${b.name}${b.bank_name?' — '+b.bank_name:''}`,value:b.id}))} onChange={v=>setHeader(h=>({...h,bank_account_id:v}))} />
+              </div>
+            )}
+            {stockPreview && (
+              <div className="ih-item-stock">
+                📦 <b>{stockPreview.name}</b>{stockPreview.batchNo ? ` (Batch ${stockPreview.batchNo})` : ''} — Stock Left:{' '}
+                <b className={stockPreview.batchStock <= 0 ? 'low' : ''}>{stockPreview.batchStock}</b>
+                {stockPreview.totalStock !== stockPreview.batchStock ? <> &nbsp;|&nbsp; Total (all batches): <b>{stockPreview.totalStock}</b></> : null}
               </div>
             )}
           </>
@@ -5041,7 +5065,7 @@ function UsersRolesPermissions({ active = false }) {
     setEditingUser(user || null);
     if (user) {
       const role = roles.find(r => (user.roles || '').split(', ').includes(r.name));
-      userForm.setFieldsValue({ name:user.name, email:user.email, role_id:role?.id, is_active:!!user.is_active, password:'' });
+      userForm.setFieldsValue({ name:user.name, username:user.username, email:user.email, role_id:role?.id, is_active:!!user.is_active, password:'' });
     } else userForm.resetFields();
     setUserOpen(true);
   };
@@ -5084,7 +5108,7 @@ function UsersRolesPermissions({ active = false }) {
 
       {tab==='users' ? <Table rowKey="id" dataSource={users} pagination={{pageSize:10}} columns={[
         {title:'Name',dataIndex:'name'},
-        {title:'Email',dataIndex:'email'},
+        {title:'User Name',dataIndex:'username'},
         {title:'Role',dataIndex:'roles',render:v=>v||'-'},
         {title:'Status',dataIndex:'is_active',render:v=><Tag color={v?'green':'red'}>{v?'Active':'Inactive'}</Tag>},
         {title:'Created',dataIndex:'created_at',render:v=>v?dateTime(v):'-'},
@@ -5098,8 +5122,9 @@ function UsersRolesPermissions({ active = false }) {
 
     <Modal title={editingUser ? 'Edit User' : 'Create New User'} open={userOpen} onCancel={()=>setUserOpen(false)} footer={null} destroyOnClose>
       <Form form={userForm} layout="vertical" onFinish={saveUser} initialValues={{is_active:true}}>
-        <Form.Item name="name" label="Full Name" rules={[{required:true,message:'Enter name'}]}><Input placeholder="User name"/></Form.Item>
-        <Form.Item name="email" label="Email / Login" rules={[{required:true,type:'email',message:'Enter a valid email'}]}><Input placeholder="user@example.com"/></Form.Item>
+        <Form.Item name="name" label="Full Name" rules={[{required:true,message:'Enter name'}]}><Input placeholder="Full name"/></Form.Item>
+        <Form.Item name="username" label="User Name (used to Login)" rules={[{required:true,message:'Enter a user name'},{pattern:/^[a-zA-Z0-9._-]{3,50}$/,message:'3-50 characters: letters, numbers, dot, dash, underscore only'}]}><Input placeholder="e.g. jsmith" autoCapitalize="none"/></Form.Item>
+        <Form.Item name="email" label="Email (optional, for contact only)" rules={[{type:'email',message:'Enter a valid email'}]}><Input placeholder="user@example.com"/></Form.Item>
         <Form.Item name="password" label={editingUser ? 'New Password (leave blank to keep current)' : 'Password'} rules={editingUser?[]:[{required:true,message:'Enter password'}]}><Input.Password placeholder="Minimum 6 characters"/></Form.Item>
         <Form.Item name="role_id" label="Role" rules={[{required:true,message:'Select a role'}]}><Select placeholder="Select role" options={roles.map(r=>({label:r.name,value:r.id}))}/></Form.Item>
         <Form.Item name="is_active" valuePropName="checked"><Checkbox>Active user</Checkbox></Form.Item>
@@ -5819,6 +5844,33 @@ function App() {
     else { setKey(value); setImmersive(['salereturn','purchasereturn'].includes(value)); }
   };
 
+  // Every sidebar entry maps to the permission code that must be present on
+  // the logged-in user (via their role) for it to show up. This is what makes
+  // "Users, Roles & Permissions" actually change what a user can see/do —
+  // previously the menu ignored permissions entirely and showed every screen
+  // to every logged-in user, which is why custom roles appeared to have no effect.
+  const MENU_PERMISSION = {
+    dashboard: 'dashboard.view',
+    sales: 'sale.view', paymentin: 'payment_in.view', salereturn: 'sale.return',
+    purchase: 'purchase.view', purchasereturn: 'purchase.return', paymentout: 'payment_out.view',
+    medicines: 'items.view', categories: 'categories.view', units: 'units.view', stock: 'stock.view',
+    patients: 'patients.view', doctors: 'doctors.view', suppliers: 'suppliers.view',
+    accounts: 'accounting.view', cashbank: 'cash_bank.view', expenses: 'expenses.view',
+    reports: 'reports.view',
+    settings: 'settings.view', 'users-roles': 'users.view'
+  };
+  const userPermissions = user?.permissions || null; // null = legacy session (log in again to pick up permissions)
+  const can = menuKey => !userPermissions || userPermissions.includes(MENU_PERMISSION[menuKey]);
+
+  // If the signed-in user's role doesn't grant access to whatever page is
+  // currently open (e.g. permissions changed, or the default page isn't in
+  // their role), fall back to the first page they're allowed to see.
+  useEffect(() => {
+    if (!user) return;
+    const allowedKeys = Object.keys(MENU_PERMISSION).filter(can);
+    if (!allowedKeys.includes(key) && allowedKeys.length) setKey(allowedKeys[0]);
+  }, [userPermissions, key, !!user]);
+
 
   if (!user) {
 
@@ -5905,7 +5957,9 @@ function App() {
       ]
     }
 
-  ];
+  ]
+    .map(item => item.children ? { ...item, children: item.children.filter(c => can(c.key)) } : item)
+    .filter(item => (item.children ? item.children.length > 0 : can(item.key)));
 
 
   const pages = {
