@@ -1,0 +1,3 @@
+const pool=require('../config/db');
+exports.list=async(req,res)=>{const [r]=await pool.query('SELECT setting_key,setting_value FROM app_settings WHERE hospital_id=? ORDER BY setting_key',[req.user.hospital_id]);res.json(Object.fromEntries(r.map(x=>[x.setting_key,x.setting_value])))};
+exports.save=async(req,res)=>{const h=req.user.hospital_id;const conn=await pool.getConnection();try{await conn.beginTransaction();for(const [k,v] of Object.entries(req.body||{})){await conn.query(`INSERT INTO app_settings(hospital_id,setting_key,setting_value) VALUES(?,?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)`,[h,k,String(v??'')])}await conn.commit();res.json({ok:true})}catch(e){await conn.rollback();throw e}finally{conn.release()}};

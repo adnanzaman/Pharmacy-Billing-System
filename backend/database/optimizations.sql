@@ -1,0 +1,15 @@
+USE xmart_hospital;
+CREATE INDEX idx_stock_medicine ON stock_transactions(medicine_id, batch_id);
+CREATE INDEX idx_sale_date ON sales_invoices(invoice_date);
+CREATE INDEX idx_purchase_date ON purchase_invoices(invoice_date);
+CREATE INDEX idx_patient_visit_date ON patient_visits(visit_date);
+CREATE INDEX idx_patient_search ON patients(hospital_id,name,mobile,cnic);
+CREATE INDEX idx_batch_expiry ON medicine_batches(expiry_date);
+CREATE INDEX idx_journal_items_account ON journal_entry_items(account_id);
+CREATE INDEX idx_audit_entity ON audit_logs(entity, entity_id, created_at);
+CREATE INDEX idx_audit_user_date ON audit_logs(user_id, created_at);
+CREATE INDEX idx_medicine_barcode ON medicines(hospital_id, barcode);
+CREATE INDEX idx_medicine_name ON medicines(hospital_id, name);
+CREATE INDEX idx_stock_date ON stock_transactions(hospital_id, transaction_date);
+CREATE INDEX idx_sale_items_medicine ON sale_items(medicine_id, batch_id);
+CREATE INDEX idx_purchase_items_medicine ON purchase_items(medicine_id, batch_id);

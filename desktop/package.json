@@ -1,0 +1,53 @@
+{
+  "name": "xmart-hospital-erp-desktop",
+  "version": "1.0.0",
+  "description": "Xmart Hospital ERP Desktop Application",
+  "author": "Xmart Solutions LLC",
+  "main": "main.js",
+  "private": true,
+
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development electron .",
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+
+  "build": {
+    "appId": "com.xmart.hospitalerp",
+    "productName": "Punjab Hospital",
+
+    "files": [
+      "main.js"
+    ],
+
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web/dist"
+      }
+    ],
+
+    "directories": {
+      "output": "release"
+    },
+
+    "win": {
+      "target": "nsis"
+    },
+
+    "mac": {
+      "target": "dmg"
+    },
+
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
